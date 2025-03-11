@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File (venv)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\main.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "python": "${workspaceFolder}\\venv\\Scripts\\python.exe", // Путь к Python в venv
+            "envFile": "${workspaceFolder}\\.env",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        }
+    ]
+}
