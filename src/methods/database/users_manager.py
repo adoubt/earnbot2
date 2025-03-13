@@ -35,6 +35,14 @@ class UsersDatabase:
                 if not result:
                     return []
                 return result
+    @classmethod
+    async def get_all_admins(cls):
+        async with aiosqlite.connect("src/databases/users.db") as db:
+            async with db.execute(f'SELECT * FROM users WHERE is_admin = 1') as cursor:
+                result = await cursor.fetchall()
+                if not result:
+                    return []
+                return result        
 
     @classmethod
     async def get_all_banned(cls):
@@ -53,7 +61,15 @@ class UsersDatabase:
                 if not result:
                     return -1
                 return result
-
+    @classmethod
+    async def get_user_by_username(cls, username: str):
+        async with aiosqlite.connect("src/databases/users.db") as db:
+            async with db.execute(f'SELECT * FROM users WHERE username = "{username}"') as cursor:
+                result = await cursor.fetchone()
+                if not result:
+                    return -1
+                return result
+            
     @classmethod
     async def create_user( 
         cls,
@@ -122,3 +138,11 @@ class UsersDatabase:
                 (amount, referrals, rereferrals, user_id),
             )
             await db.commit()
+    @classmethod
+    async def get_count(cls):
+        async with aiosqlite.connect("src/databases/users.db") as db:
+            async with db.execute(f'SELECT COUNT(*) FROM users') as cursor:
+                result = await cursor.fetchone()
+                if not result:
+                    return -1
+                return result[0]

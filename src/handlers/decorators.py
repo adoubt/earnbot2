@@ -2,7 +2,7 @@ from src.methods.database.users_manager import UsersDatabase
 from aiogram.types import Message, CallbackQuery
 
 from loguru import logger
-from src.misc import bot_id, CHANNEL_LINK
+from src.misc import bot, bot_id, CHANNEL_LINK,LOG_CHANNEL_ID
 from src.methods.utils import process_referral, is_user_subscribed
 from src.keyboards import user_keyboards
 # def new_seller_handler(function):
@@ -27,11 +27,16 @@ def new_user_handler(function):
             username =message.from_user.username
             language = message.from_user.language_code
             referr = message.text.split()[1] if len(message.text.split()) > 1 else None
-
+            
             
             await UsersDatabase.create_user(user_id=user_id,username=username,language=language,referr=referr)
-            if referr: await process_referral(referr)
-
+            if referr and (await UsersDatabase.get_user(referr)!= -1): 
+                await process_referral(referr)
+                referr_username = await UsersDatabase.get_value(referr,'username')
+                msg = f"👤 @{username} {user_id} from @{referr_username} {referr}"
+            else: 
+                msg = f"👤 @{username} {user_id}"
+            await bot.send_message(LOG_CHANNEL_ID, text = msg,disable_notification =True)
             logger.success(f"Новый пользователь (ID: {user_id} username {username})")
             if user_id == int(bot_id):
 
@@ -66,3 +71,14 @@ def pursue_subscription(function):
         return
 
     return _pursue_subscription
+
+def is_admin(function):
+    async def _is_admin(*args, **kwargs):
+        message: Message = args[0]
+        user_id = message.from_user.id
+        if await UsersDatabase.is_admin(user_id) or user_id == int(bot_id):
+            return await function(*args, **kwargs)
+        await message.answer('You don\'t have admin rights')
+        return
+
+    return _is_admin

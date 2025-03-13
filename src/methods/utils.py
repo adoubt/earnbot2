@@ -1,9 +1,16 @@
 import urllib.parse
 import re
-from aiogram.types import Message
-from src.misc import bot,CHANNEL
+import asyncio
+from aiogram.filters import Filter
+from aiogram.types import Message, ContentType
+from aiogram import Bot
+from src.misc import bot,CHANNEL_ID,LOG_CHANNEL_LINK, LOG_CHANNEL_ID
 from src.methods.database.users_manager import UsersDatabase
+from src.methods.database.config_manager import ConfigDatabase
 from loguru import logger
+
+
+
 
 def get_file_id(message: Message, file_type: str) -> str:
     """Проверка основного сообщения"""
@@ -62,13 +69,64 @@ async def process_referral(user_id: int, level: int = 1):
         await process_referral(referrer, level + 1)
 
 
-    
 
 
 async def is_user_subscribed(user_id: int, **kwargs):
 
-    member = await bot.get_chat_member(CHANNEL, user_id)
+    member = await bot.get_chat_member(int(CHANNEL_ID), user_id)
     if member.status in ["member", "creator", "administrator"]:
         return True
     else:
         return False
+    
+
+async def get_bot_username(bot: Bot):
+    me = await bot.get_me()
+    return me.username 
+
+
+
+class AdStateFilter(Filter):
+    def __init__(self, required_state: str):
+        self.required_state = required_state
+
+    async def __call__(self, message: Message) -> bool:
+        state = await ConfigDatabase.get_value("ad_state")
+        return state == self.required_state 
+    
+
+async def send_ad_message(user_id, message: Message):
+    """ Отправляет сообщение конкретному пользователю """
+    try:
+        if message.content_type == ContentType.TEXT:
+            await bot.send_message(user_id, message.html_text, parse_mode="HTML")
+        elif message.content_type == ContentType.PHOTO:
+            await bot.send_photo(user_id, message.photo[-1].file_id, caption=message.html_text, parse_mode="HTML")
+        elif message.content_type == ContentType.VIDEO:
+            await bot.send_video(user_id, message.video.file_id, caption=message.html_text, parse_mode="HTML")
+        elif message.content_type == ContentType.ANIMATION:
+            await bot.send_animation(user_id, message.animation.file_id, caption=message.html_text, parse_mode="HTML")
+        
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка при отправке {user_id}: {e}")
+        return False
+
+async def handle_send_ad(message: Message, admin:int):
+    """ Основная функция рассылки рекламы """
+    state = await ConfigDatabase.get_value("ad_state")
+    users = {
+        "all": await UsersDatabase.get_all(),
+        "test": [[admin]],
+        "admins": await UsersDatabase.get_all_admins()
+    }.get(state, [])
+    sent_count = 0
+    for user in users:
+        success = await send_ad_message(user[0], message)  # Ждем завершения отправки
+        await asyncio.sleep(1)  # Пауза между отправками
+        if success:
+            sent_count += 1
+    admin_name = await UsersDatabase.get_value(admin,'username')
+    msg = f"📢 Messages sent: <b>{sent_count}</b>\nSender: @{admin_name} {admin}\nstate: <b>{state}<b>"
+    await bot.send_message(LOG_CHANNEL_ID, msg, parse_mode="HTML", disable_notification=True)
+    logger.success(msg)
