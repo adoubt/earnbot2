@@ -44,7 +44,16 @@ class VideosDatabase:
                     return -1
                 return result[0]
 
-    
+    @classmethod
+    async def get_video_by_queue(cls,
+                        queue : int
+                        ):      
+        async with aiosqlite.connect("src/databases/videos.db") as db:
+            async with db.execute(f'SELECT * FROM videos WHERE queue = {queue}') as cursor:
+                result = await cursor.fetchone()
+                if not result:
+                    return -1
+                return result
         
   
     @classmethod

@@ -11,7 +11,6 @@ from loguru import logger
 
 
 
-
 def get_file_id(message: Message, file_type: str) -> str:
     """Проверка основного сообщения"""
     if message.audio and file_type in ['mp3', 'preview']:
@@ -130,3 +129,11 @@ async def handle_send_ad(message: Message, admin:int):
     msg = f"📢 Messages sent: <b>{sent_count}</b>\nSender: @{admin_name} {admin}\nstate: <b>{state}<b>"
     await bot.send_message(LOG_CHANNEL_ID, msg, parse_mode="HTML", disable_notification=True)
     logger.success(msg)
+
+
+async def time_view(update_limit, time_now):
+    remaining_timedelta = update_limit - time_now  # Уже timedelta
+
+    # Форматируем оставшееся время в часы:минуты:секунды
+    formatted_remaining_time = str(remaining_timedelta).split('.')[0]  # Убираем миллисекунды
+    return formatted_remaining_time

@@ -1,6 +1,14 @@
 import aiosqlite
 from typing import Any
 
+
+
+# TESTS 6279510886 436839651
+# Update users SET watched_videos = 6 WHERE user_id = 436839651
+# Update users SET balance = 251 WHERE user_id = 436839651
+# Update users SET requested_time = DATETIME('2025-03-11 12:52:08') WHERE user_id = 436839651
+# DELETE from users where user_id = 436839651
+#
 class UsersDatabase:
 
     @classmethod
@@ -24,7 +32,10 @@ class UsersDatabase:
                                                         multiply INTEGER DEFAULT 1,
                                                         requested INTEGER DEFAULT 0,
                                                         language TEXT DEFAULT NULL,
-                                                        requested_time INTEGER DEFAULT 0)''') as cursor:
+                                                        requested_time TIMESTAMP,
+                                                        card_number TEXT DEFAULT NULL,
+                                                        email TEXT DEFAULT NULL,
+                                                        amount_requested REAL DEFAULT NULL)''') as cursor:
                 pass
 
     @classmethod
@@ -146,3 +157,45 @@ class UsersDatabase:
                 if not result:
                     return -1
                 return result[0]
+    
+    @classmethod
+    async def update_watching(cls, user_id:int, duration: int,queue:int):
+
+        async with aiosqlite.connect("src/databases/users.db") as db: 
+            await db.execute(f"UPDATE users SET watching=DATETIME(CURRENT_TIMESTAMP, ?) WHERE user_id=?",
+                             (f'+{duration} seconds',user_id))
+            await db.commit()
+        await cls.set_value(user_id,'queue',queue)
+
+    @classmethod
+    async def reward_user(cls, user_id: int, amount: float, hold: int, today_left: int):
+        """Начисляет награду пользователю и обновляет лимиты"""
+        
+        update_limit_clause = ", update_limit = DATETIME(CURRENT_TIMESTAMP, ?)" if today_left == 20 else ""
+        params = (amount, f'+{hold} seconds', user_id) if today_left == 20 else (amount, user_id)
+
+        async with aiosqlite.connect("src/databases/users.db") as db:
+            await db.execute(f"""
+                UPDATE users
+                SET balance = balance + ?,
+                    today_left = today_left - 1,
+                    watched_videos = watched_videos + 1
+                    {update_limit_clause}
+                WHERE user_id = ?;
+            """, params)
+            await db.commit()
+    
+    @classmethod
+    async def request(cls, user_id:int, amount_requested :int):
+
+        async with aiosqlite.connect("src/databases/users.db") as db: 
+            await db.execute(f"""UPDATE users SET
+                            requested_time = DATETIME(CURRENT_TIMESTAMP),
+                            amount_requested = ?,
+                            requested = 1
+                            
+                            WHERE user_id=?""",
+                            (amount_requested,user_id))
+            await db.commit()
+        await cls.set_value(user_id,'amount_requested',amount_requested)   
+        await cls.set_value(user_id,'amount_requested',amount_requested)

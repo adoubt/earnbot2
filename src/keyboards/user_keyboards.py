@@ -69,12 +69,24 @@ def get_admin_video_kb(video_id) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="Удалить", callback_data=f"delvideo_{video_id}")]])
     return ikb
 
-def get_watch_kb() -> InlineKeyboardMarkup:
+def get_videos_kb() -> InlineKeyboardMarkup:
     ikb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Empezar a ver 📺", callback_data="watch")]])
     return ikb
 
+def get_check_balance_kb() -> InlineKeyboardMarkup:
+    ikb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Empezar a ver 📺", callback_data="watch")],
+        [InlineKeyboardButton(text="invitaa tus amigos",callback_data ='earn_more')]])
+    return ikb
 
+def get_watch_kb(include_earn_more: bool = False) -> InlineKeyboardMarkup:
+    buttons = [[InlineKeyboardButton(text="Participar (recibir un premio)", callback_data="receive")]]
+    
+    if include_earn_more:
+        buttons.append([InlineKeyboardButton(text="💰 Ganar aún más dinero 💰", callback_data='earn_more')])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_channel_kb(link:str) -> InlineKeyboardMarkup:
     ikb = InlineKeyboardMarkup(inline_keyboard=[
@@ -88,84 +100,14 @@ def get_withdraw_kb() -> InlineKeyboardMarkup:
         ])
     return ikb
 
-# def get_choose_licenses_kb(
-#     user_id, product_id, licenses, disabled, feature: int = None, in_cart: int = None
-# ) -> InlineKeyboardMarkup:
-#     buttons = []
+def get_process_kb() -> InlineKeyboardMarkup:
+    ikb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='salir ↩️', callback_data="exit")]
+        ])
+    return ikb
 
-#     # Логика определения выбранной лицензии (selected_license)
-#     # Если в корзине есть товар, то он считается выбранным. Если нет, берем рекомендованную.
-
-#     for license in licenses:
-#         license_id=license[0]
-#         if license_id not in disabled:
-#             # Формируем текст кнопки с ценой
-#             price = license[4]
-#             price = int(price) if price.is_integer() else price
-#             text = f"{license[2]} ${price}"
-#             callback_data = f"addToCart:product_id={product_id}&license_id={license_id}&user_id={user_id}"
-#             if license_id == in_cart:
-#                 text = f'🛒 View in Cart ›'
-#                 callback_data = "cart"
-#             # Добавляем звезду для рекомендованной лицензии
-#             if license_id == feature and license_id != in_cart:
-#                 text += " 🔹"
-            
-#             # Меняем текст для активной выбранной лицензии
-            
-            
-#             # Добавляем кнопку в список
-#             buttons.append([InlineKeyboardButton(text=text, callback_data=callback_data)])
-
-#     # Создаем footer с кнопками для навигации
-#     footer = [
-#         InlineKeyboardButton(text="‹ Back", callback_data=f"showcase_{product_id}")
-#     ]
-
-#     # Возвращаем разметку с кнопками
-#     inline_keyboard = buttons + [footer]
-#     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-
-# def get_generated_cart_kb(cart_items, user_id, total_amount,payment_method) -> InlineKeyboardMarkup:
-
-#     # Генерация кнопок для товаров
-#     ikb = [
-#         [
-#             InlineKeyboardButton(text=item.get("name", "unknown item"), callback_data=f"showcase_{item.get('product_id', 'unknown')}"),
-#             InlineKeyboardButton(text="🗑️", callback_data=f"delFromCart_{item.get('product_id', 'unknown')}_{item.get('license_id', 'unknown')}_{user_id}_cart")
-#         ]
-#         for item in cart_items
-#     ]
-
-#     # Кнопки действий
-#     ikb += [
-#         #[InlineKeyboardButton(text="🗑️ Remove All", callback_data=f"clear_cart_{user_id}")],
-#         [InlineKeyboardButton(text=f"Method: {payment_method}", callback_data="choosePaymentMethod")],
-#         [InlineKeyboardButton(text=f"💳 Checkout ${total_amount}", callback_data=f"checkout")]
-#     ]
-
-#     return InlineKeyboardMarkup(inline_keyboard=ikb)
-
-
-
-# def get_main_seller_kb() -> ReplyKeyboardMarkup:
-    
-#     rkb = ReplyKeyboardMarkup(keyboard=[
-#         #[KeyboardButton(text='🏠 Home',callback_data='homepage'),
-#         [KeyboardButton(text='➕ New Beat')],
-#         [KeyboardButton(text='📼 My Beats', callback_data='mybeats_0'),
-#         KeyboardButton(text='📂 My Licenses')],
-#         [KeyboardButton(text='⚙️ Settings', callback_data='settings_1'),
-#          KeyboardButton(text='🌏 Buy Beats', callback_data='buyer')]],resize_keyboard=True
-#     )
-#     return rkb
-
-# def get_link_kb(product_id:int,name:str=None)-> InlineKeyboardMarkup:
-#     text = name if name else 'link'
-#     url = LINK + str(product_id)
-#     ikb = InlineKeyboardMarkup(inline_keyboard=[
-#         [InlineKeyboardButton(text=text, url=url)]
-#     ]) 
-#     return ikb
-
+def get_receive_kb() -> InlineKeyboardMarkup:
+    ikb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💰 Ganar aún más dinero 💰", callback_data ='earn_more')]])
+    return ikb
 
