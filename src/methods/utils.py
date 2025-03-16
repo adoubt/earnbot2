@@ -4,7 +4,7 @@ import asyncio
 from aiogram.filters import Filter
 from aiogram.types import Message, ContentType
 from aiogram import Bot
-from src.misc import bot,CHANNEL_ID,LOG_CHANNEL_LINK, LOG_CHANNEL_ID
+from src.misc import bot,CHANNEL_ID,LOG_CHANNEL_LINK, LOG_CHANNEL_ID, REFERR_REWARD_RARE, REREFERR_REWARD_RATE
 from src.methods.database.users_manager import UsersDatabase
 from src.methods.database.config_manager import ConfigDatabase
 from loguru import logger
@@ -37,7 +37,7 @@ def is_valid_email(email):
 
 async def process_referral(user_id: int, level: int = 1):
     """Обрабатывает рефералку на любом уровне"""
-    bonus_levels = {1: 5.0, 2: 2.5}  # Можно добавить больше уровней
+    bonus_levels = {1: REFERR_REWARD_RARE, 2: REREFERR_REWARD_RATE}  # Можно добавить больше уровней
     referral_field = "referrals" if level == 1 else "rereferrals"
     amount = bonus_levels.get(level, 0)  # Если уровень больше 2, начисления нет
 
@@ -51,11 +51,11 @@ async def process_referral(user_id: int, level: int = 1):
     # Формируем сообщение
     message = f"""🎉 {"Alguien se registró en el bot usando su enlace" if level == 1 else "Alguien se registró en el bot utilizando el enlace de tu amigo"} 🎉
 
-<b>+ {amount:.1f} Sol</b> 💰 
+<b>+ {amount} Pesos</b> 💰 
 
 📢 Has invitado a: <b>{referrals} usuarios</b>
 📣 Tus amigos han invitado a: <b>{rereferrals} usuarios</b>
-💸 Su saldo: <b>{balance} Sol</b>"""
+💸 Su saldo: <b>{balance} Pesos</b>"""
 
     # Отправляем сообщение пользователю
     try:

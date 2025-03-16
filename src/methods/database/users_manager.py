@@ -18,7 +18,7 @@ class UsersDatabase:
                     f'''CREATE TABLE IF NOT EXISTS users(user_id INTEGER PRIMARY KEY,
                                                         joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                                         watching TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                                        balance REAL DEFAULT 0.00,
+                                                        balance INTEGER DEFAULT 0,
                                                         referr INTEGER DEFAULT NULL,
                                                         referrals INTEGER DEFAULT 0,
                                                         rereferrals INTEGER DEFAULT 0,
@@ -168,7 +168,7 @@ class UsersDatabase:
         await cls.set_value(user_id,'queue',queue)
 
     @classmethod
-    async def reward_user(cls, user_id: int, amount: float, hold: int, today_left: int):
+    async def reward_user(cls, user_id: int, amount: int, hold: int, today_left: int):
         """Начисляет награду пользователю и обновляет лимиты"""
         
         update_limit_clause = ", update_limit = DATETIME(CURRENT_TIMESTAMP, ?)" if today_left == 20 else ""
@@ -198,4 +198,18 @@ class UsersDatabase:
                             (amount_requested,user_id))
             await db.commit()
         await cls.set_value(user_id,'amount_requested',amount_requested)   
-        await cls.set_value(user_id,'amount_requested',amount_requested)
+    
+    @classmethod
+    async def cheat_6(cls, user_id: int):
+        """Откатывает время созданной заявки на -48 часов.
+        Если время отсутствует (NULL), то берётся текущее время и отнимается 48 часов.
+        """
+        async with aiosqlite.connect("src/databases/users.db") as db:
+            query = """
+                UPDATE users 
+                SET requested_time = COALESCE(requested_time, DATETIME('now')) -- Если NULL, берём текущее время
+                    , requested_time = DATETIME(requested_time, '-48 hours') -- Уменьшаем на 48 часов
+                WHERE user_id = ?
+            """
+            await db.execute(query, (user_id,))
+            await db.commit()
