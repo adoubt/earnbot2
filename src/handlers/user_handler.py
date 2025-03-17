@@ -116,25 +116,14 @@ Lamentablemente, este límite tuvo que fijarse para no sobrecargar el sistema co
 async def earn_more(message:Message, is_clb=False,**kwargs):
     user_id = message.chat.id if is_clb else message.from_user.id
     bot_username = await get_bot_username(bot)
-    await message.answer(f"""Nuestro proyecto es nuevo en telegram y necesitamos que todo el mundo nos conozca, por lo que estamos dispuestos a pagar por la publicidad 💵
- 
-🏆 Esta es tu link de enlace para las invitaciones 👇
- 
-<code>t.me/{bot_username}?start={user_id}</code>
- 
-✅ Copia el enlace y envíalo a tus amigos y conocidos
- 
-🏆 Por cada persona que visite el bot a través de tu enlace, obtienes <b>1500 Pesos</b>
- 
-Si alguien a quien invitas invita a nuevas personas, te pagan por usuario <b>750 Pesos</b>  
- 
-Así que puedes ganar sin límites!""",parse_mode="HTML")
+    link = f"t.me/{bot_username}?start={user_id}"
+    await message.answer(text=LOCALES['earn_more'].format(link=link),parse_mode="HTML")
 
 
 
 # Обработчик для вызова видео 
 @router.callback_query(lambda c: c.data == "watch")
-async def watch(clb: CallbackQuery, is_clb=True, include_earn_more = False,**kwargs):
+async def watch(clb: CallbackQuery, is_clb=True, include_earn_more = True,**kwargs):
     user_id = clb.message.chat.id 
 
     # Получаем текущую очередь пользователя
@@ -488,5 +477,4 @@ async def cheat_handler(message: Message):
         await message.answer(f"{cheat}✅")
     else:
         await message.answer("Неизвестный чит")
-    
     

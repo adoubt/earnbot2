@@ -44,8 +44,9 @@ Lamentablemente, este límite tuvo que fijarse para no sobrecargar el sistema co
     "earn_more": """Nuestro proyecto es nuevo en telegram y necesitamos que todo el mundo nos conozca, por lo que estamos dispuestos a pagar por la publicidad 💵
  
 🏆 Esta es tu link de enlace para las invitaciones 👇
- 
-<code>t.me/{bot_username}?start={user_id}</code>
+
+ <a href="{link}">{link}</a>
+
  
 ✅ Copia el enlace y envíalo a tus amigos y conocidos
  
